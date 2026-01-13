@@ -2,6 +2,8 @@ package faang.school.urlshortenerservice.controller.handler;
 
 import faang.school.urlshortenerservice.dto.ErrorResponse;
 import faang.school.urlshortenerservice.exception.HashNotExistException;
+import faang.school.urlshortenerservice.exception.SubscriptionRequiredException;
+import faang.school.urlshortenerservice.exception.UserAlreadyExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -43,6 +45,20 @@ public class RestExceptionHandler {
     public ErrorResponse handleValidationException(EntityNotFoundException ex) {
         log.error("EntityNotFoundException: {}", ex.getMessage());
         return buildErrorResponse(ErrorCode.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleValidationException(UserAlreadyExistsException ex) {
+        log.error("UserAlreadyExistsException: {}", ex.getMessage());
+        return buildErrorResponse(ErrorCode.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(SubscriptionRequiredException.class)
+    @ResponseStatus(HttpStatus.PAYMENT_REQUIRED)
+    public ErrorResponse handleValidationException(SubscriptionRequiredException ex) {
+        log.error("SubscriptionRequiredException: {}", ex.getMessage());
+        return buildErrorResponse(ErrorCode.PAYMENT_REQUIRED, ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

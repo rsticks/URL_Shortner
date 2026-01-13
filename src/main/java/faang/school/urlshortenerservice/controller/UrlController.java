@@ -1,6 +1,7 @@
 package faang.school.urlshortenerservice.controller;
 
 import faang.school.urlshortenerservice.dto.ResponseDto;
+import faang.school.urlshortenerservice.dto.UserLinkDto;
 import faang.school.urlshortenerservice.dto.UrlDto;
 import faang.school.urlshortenerservice.service.url.UrlService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -30,6 +32,11 @@ public class UrlController {
     @PostMapping("/url")
     public ResponseDto createShortUrl(@Valid @RequestBody UrlDto url, HttpServletRequest request) {
         return urlService.createShortUrl(url.getUrl(), request);
+    }
+
+    @GetMapping("/url/me")
+    public List<UserLinkDto> myUrls(HttpServletRequest request) {
+        return urlService.getMyUrls(request);
     }
 
     @GetMapping("/{hash}")

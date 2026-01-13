@@ -1,3 +1,7 @@
 databaseChangeLog:
   - include:
       file: db/changelog/changeset/url_V000__initial.sql
+  - include:
+      file: db/changelog/changeset/users_V001__create_users.sql
+  - include:
+      file: db/changelog/changeset/user_url_V002__create_user_url.sql
