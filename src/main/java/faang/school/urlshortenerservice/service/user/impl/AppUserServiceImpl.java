@@ -24,12 +24,16 @@ public class AppUserServiceImpl implements AppUserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public RegisterResult register(String username, String rawPassword) {
+    public RegisterResult register(String username, String email, String rawPassword) {
         if (appUserRepository.existsByUsername(username)) {
             throw new UserAlreadyExistsException("Username already exists: " + username);
         }
+        if (appUserRepository.existsByEmail(email)) {
+            throw new UserAlreadyExistsException("Email already exists: " + email);
+        }
         AppUser user = new AppUser();
         user.setUsername(username);
+        user.setEmail(email);
         user.setPasswordHash(passwordEncoder.encode(rawPassword));
         AppUser saved = appUserRepository.save(user);
         return new RegisterResult(saved.getId(), saved.getUsername(), saved.getSubscriptionExpiresAt(), isSubscribed(saved));

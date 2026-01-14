@@ -6,7 +6,7 @@ import faang.school.urlshortenerservice.service.user.dto.RegisterResult;
 import faang.school.urlshortenerservice.service.user.dto.SubscriptionPlan;
 
 public interface AppUserService {
-    RegisterResult register(String username, String rawPassword);
+    RegisterResult register(String username, String email, String rawPassword);
 
     AppUser getCurrentUser();
 

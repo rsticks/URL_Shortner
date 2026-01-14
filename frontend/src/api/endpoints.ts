@@ -19,8 +19,8 @@ export async function createShortUrl(url: string, creds?: Credentials | null): P
   throw new Error('Unexpected response from /api/v1/url')
 }
 
-export async function register(username: string, password: string): Promise<RegisterResult> {
-  const res = await http.post<RegisterResult>('/api/v1/auth/register', { username, password })
+export async function register(username: string, email: string, password: string): Promise<RegisterResult> {
+  const res = await http.post<RegisterResult>('/api/v1/auth/register', { username, email, password })
   return res.data
 }
 

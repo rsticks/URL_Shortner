@@ -12,6 +12,7 @@ import { isLatinAuth } from '../utils/validation'
 export function RegisterPage() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
   const [result, setResult] = useState<RegisterResult | null>(null)
@@ -22,8 +23,18 @@ export function RegisterPage() {
     setError(null)
     setResult(null)
     const u = username.trim()
+    const e = email.trim()
     if (!isLatinAuth(u)) {
       setError('Логин: только латиница, цифры, ".", "_" или "-"')
+      return
+    }
+    if (e.length === 0) {
+      setError('Email обязателен')
+      return
+    }
+    // minimal client-side check; backend validates strictly
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      setError('Email: некорректный формат')
       return
     }
     if (!isLatinAuth(password)) {
@@ -36,7 +47,7 @@ export function RegisterPage() {
     }
     setLoading(true)
     try {
-      const data = await register(u, password)
+      const data = await register(u, e, password)
       setResult(data)
       // удобство: сразу залогиниться и сохранить JWT
       const auth = await login(u, password)
@@ -54,6 +65,13 @@ export function RegisterPage() {
         <div className="grid gap-3">
           <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
           <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+          />
+          <Input
             label="Password"
             type="password"
             value={password}
@@ -68,7 +86,10 @@ export function RegisterPage() {
             autoComplete="new-password"
           />
           <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={onRegister} disabled={loading || username.trim().length === 0 || password.length === 0}>
+            <Button
+              onClick={onRegister}
+              disabled={loading || username.trim().length === 0 || email.trim().length === 0 || password.length === 0}
+            >
               {loading ? 'Регистрируем…' : 'Зарегистрироваться'}
             </Button>
             <Button variant="secondary" onClick={() => navigate('/account')}>

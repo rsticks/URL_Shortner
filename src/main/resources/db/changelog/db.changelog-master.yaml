@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changeset/user_url_V002__create_user_url.sql
   - include:
       file: db/changelog/changeset/refresh_tokens_V003__create_refresh_tokens.sql
+  - include:
+      file: db/changelog/changeset/users_V004__add_email.sql
