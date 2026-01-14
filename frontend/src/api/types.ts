@@ -12,13 +12,13 @@ export type ResponseDto = {
 export type RegisterResult = {
   id: number
   username: string
-  subscriptionExpiresAt: string | null
+  subscriptionExpiresAt: string | number | null
   subscribed: boolean
 }
 
 export type PurchaseResult = {
   username: string
-  subscriptionExpiresAt: string | null
+  subscriptionExpiresAt: string | number | null
   subscribed: boolean
 }
 
@@ -28,7 +28,14 @@ export type UserLinkDto = {
   hash: string
   originalUrl: string
   shortUrl: string
-  createdAt: string
+  createdAt: string | number | number[]
+}
+
+export type LoginResponse = {
+  tokenType: string
+  accessToken: string
+  expiresAtEpochSeconds: number
+  username: string
 }
 
 

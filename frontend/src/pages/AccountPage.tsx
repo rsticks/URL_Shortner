@@ -1,24 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
-import { purchaseSubscription, subscriptionMe } from '../api/endpoints'
+import { useEffect, useState } from 'react'
+import { login, logout, purchaseSubscription, subscriptionMe } from '../api/endpoints'
 import { formatApiError } from '../api/http'
 import type { PurchaseResult, SubscriptionPlan } from '../api/types'
-import { clearCredentials, loadCredentials, saveCredentials, type Credentials } from '../auth/credentials'
+import { clearCredentials, saveCredentials, type Credentials } from '../auth/credentials'
+import { useAuthCredentials } from '../auth/useAuthCredentials'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-
-function formatDate(iso: string | null | undefined) {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString()
-}
+import { formatBackendDate } from '../utils/dates'
+import { isLatinAuth } from '../utils/validation'
 
 export function AccountPage() {
-  const initial = useMemo(() => loadCredentials(), [])
-  const [creds, setCreds] = useState<Credentials | null>(initial)
-  const [username, setUsername] = useState(initial?.username ?? '')
-  const [password, setPassword] = useState(initial?.password ?? '')
+  const creds = useAuthCredentials()
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [me, setMe] = useState<PurchaseResult | null>(null)
   const [plan, setPlan] = useState<SubscriptionPlan>('MONTHLY')
   const [error, setError] = useState<string | null>(null)
@@ -39,20 +34,44 @@ export function AccountPage() {
   }
 
   useEffect(() => {
-    if (creds) refresh(creds)
+    if (!creds) {
+      setMe(null)
+      return
+    }
+    void refresh(creds)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [creds])
 
   async function onLogin() {
-    const next = { username: username.trim(), password }
-    saveCredentials(next)
-    setCreds(next)
-    await refresh(next)
+    const u = username.trim()
+    if (!isLatinAuth(u) || !isLatinAuth(password)) {
+      setError('Логин и пароль должны содержать только латиницу, цифры, ".", "_" или "-"')
+      setMe(null)
+      return
+    }
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await login(u, password)
+      const next = { username: res.username, token: res.accessToken }
+      saveCredentials(next)
+      setPassword('')
+      await refresh(next)
+    } catch (e) {
+      setMe(null)
+      setError(formatApiError(e))
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function onLogout() {
+    try {
+      await logout()
+    } catch {
+      // ignore
+    }
     clearCredentials()
-    setCreds(null)
     setMe(null)
     setError(null)
     setUsername('')
@@ -75,39 +94,45 @@ export function AccountPage() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card
-        title="Логин (HTTP Basic)"
-        subtitle="Пароль хранится в sessionStorage (только для демо). В реальном продукте лучше JWT/сессии."
-      >
-        <div className="grid gap-3">
-          <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
-          <Input
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={onLogin} disabled={loading || username.trim().length === 0 || password.length === 0}>
-              {loading ? 'Проверяем…' : 'Войти'}
-            </Button>
-            <Button variant="secondary" onClick={() => creds && refresh(creds)} disabled={loading || !creds}>
-              Обновить
-            </Button>
-            <Button variant="danger" onClick={onLogout} disabled={loading}>
-              Выйти
-            </Button>
-          </div>
-          {error ? (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100">
-              {error}
+      {!creds ? (
+        <Card title="Логин">
+          <div className="grid gap-3">
+            <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={onLogin} disabled={loading || username.trim().length === 0 || password.length === 0}>
+                {loading ? 'Проверяем…' : 'Войти'}
+              </Button>
             </div>
-          ) : null}
-        </div>
-      </Card>
+            {error ? (
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-100">
+                {error}
+              </div>
+            ) : null}
+          </div>
+        </Card>
+      ) : (
+        <Card title="Аккаунт">
+          <div className="grid gap-3">
+            <div className="text-sm text-slate-300">
+              Вы вошли как <span className="font-mono text-slate-100">{creds.username}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="danger" onClick={onLogout} disabled={loading}>
+                Выйти
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
-      <Card title="Подписка" subtitle="Эндпоинты: GET /api/v1/subscription/me, POST /api/v1/subscription/purchase">
+      <Card title="Подписка" >
         {!me ? (
           <div className="text-sm text-slate-400">Залогиньтесь, чтобы увидеть статус подписки.</div>
         ) : (
@@ -124,7 +149,7 @@ export function AccountPage() {
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-400">Expires at</span>
-                  <span className="text-slate-200">{formatDate(me.subscriptionExpiresAt)}</span>
+                  <span className="text-slate-200">{formatBackendDate(me.subscriptionExpiresAt)}</span>
                 </div>
               </div>
             </div>

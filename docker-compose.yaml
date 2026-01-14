@@ -16,7 +16,9 @@ services:
       timeout: 5s
       retries: 5
   url_shortener:
-    image: rsticks/url_shortener:1.5
+    build:
+      context: .
+    image: url_shortener:local
     container_name: url_shortener
     ports:
       - "8080:8080"

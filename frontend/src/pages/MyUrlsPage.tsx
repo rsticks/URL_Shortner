@@ -3,30 +3,20 @@ import { Link } from 'react-router-dom'
 import { myUrls } from '../api/endpoints'
 import { formatApiError } from '../api/http'
 import type { UserLinkDto } from '../api/types'
-import { loadCredentials } from '../auth/credentials'
+import type { Credentials } from '../auth/credentials'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
-
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString()
-}
+import { useAuthCredentials } from '../auth/useAuthCredentials'
+import { formatBackendDate } from '../utils/dates'
 
 export function MyUrlsPage() {
   const [items, setItems] = useState<UserLinkDto[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const creds = loadCredentials()
+  const creds = useAuthCredentials()
 
-  async function refresh() {
-    const current = loadCredentials()
-    if (!current) {
-      setError('Нужно войти (HTTP Basic), чтобы посмотреть список ссылок.')
-      setItems([])
-      return
-    }
+  async function refreshWith(current: Credentials) {
     setError(null)
     setLoading(true)
     try {
@@ -41,11 +31,16 @@ export function MyUrlsPage() {
   }
 
   useEffect(() => {
-    refresh()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!creds) {
+      setError('Нужно войти (JWT), чтобы посмотреть список ссылок.')
+      setItems([])
+      return
+    }
+    void refreshWith(creds)
+  }, [creds])
 
-  async function copy(text: string) {
+  async function copy(text: string | undefined | null) {
+    if (!text) return
     try {
       await navigator.clipboard.writeText(text)
     } catch {
@@ -57,15 +52,26 @@ export function MyUrlsPage() {
     <div className="grid gap-6">
       <Card
         title="Мои ссылки"
-        subtitle="Берётся с сервера: GET /api/v1/url/me (требует авторизацию). Сортировка — как отдаёт бэкенд (desc по createdAt)."
       >
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={refresh} disabled={loading}>
+          <Button
+            onClick={() => {
+              if (!creds) {
+                setError('Нужно войти (JWT), чтобы посмотреть список ссылок.')
+                setItems([])
+                return
+              }
+              void refreshWith(creds)
+            }}
+            disabled={loading}
+          >
             {loading ? 'Обновляем…' : 'Обновить'}
           </Button>
-          <Link to="/account">
-            <Button variant="secondary">Войти/сменить пользователя</Button>
-          </Link>
+          {!creds ? (
+            <Link to="/account">
+              <Button variant="secondary">Войти/сменить пользователя</Button>
+            </Link>
+          ) : null}
         </div>
 
         {creds ? (
@@ -91,7 +97,7 @@ export function MyUrlsPage() {
                     <div className="text-xs text-slate-400">Оригинал</div>
                     <div className="break-all text-sm text-slate-200">{it.originalUrl}</div>
                   </div>
-                  <div className="text-xs text-slate-500">создано: {formatDate(it.createdAt)}</div>
+                  <div className="text-xs text-slate-500">создано: {formatBackendDate(it.createdAt)}</div>
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -105,9 +111,6 @@ export function MyUrlsPage() {
                   </div>
                 </div>
 
-                <div className="mt-2 text-xs text-slate-500">
-                  hash: <span className="font-mono">{it.hash}</span>
-                </div>
               </div>
             ))}
           </div>

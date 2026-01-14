@@ -28,6 +28,16 @@ spring:
 
 api-version: /api/v1
 
+jwt:
+  # For production override via env: JWT_SECRET
+  secret: ${JWT_SECRET:change-me-change-me-change-me-change-me-change-me}
+  ttl-seconds: ${JWT_TTL_SECONDS:3600}
+  refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:2592000} # 30 days
+  refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
+  # For local http dev keep false; for prod https set true
+  cookie-secure: ${JWT_COOKIE_SECURE:false}
+  cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+
 url-shortener-service:
   batch-size: ${BATCH_SIZE}
   max-hashes-in-store: ${MAX_BATCH_SIZE}

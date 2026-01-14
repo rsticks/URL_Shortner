@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { register } from '../api/endpoints'
+import { login, register } from '../api/endpoints'
 import { formatApiError } from '../api/http'
 import type { RegisterResult } from '../api/types'
 import { saveCredentials } from '../auth/credentials'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { isLatinAuth } from '../utils/validation'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -20,16 +21,26 @@ export function RegisterPage() {
   async function onRegister() {
     setError(null)
     setResult(null)
+    const u = username.trim()
+    if (!isLatinAuth(u)) {
+      setError('Логин: только латиница, цифры, ".", "_" или "-"')
+      return
+    }
+    if (!isLatinAuth(password)) {
+      setError('Пароль: только латиница, цифры, ".", "_" или "-"')
+      return
+    }
     if (password !== password2) {
       setError('Пароли не совпадают')
       return
     }
     setLoading(true)
     try {
-      const data = await register(username.trim(), password)
+      const data = await register(u, password)
       setResult(data)
-      // удобство: сохранить учётку на сессию, чтобы сразу ходить в /account через Basic auth
-      saveCredentials({ username: username.trim(), password })
+      // удобство: сразу залогиниться и сохранить JWT
+      const auth = await login(u, password)
+      saveCredentials({ username: auth.username, token: auth.accessToken })
     } catch (e) {
       setError(formatApiError(e))
     } finally {
@@ -39,7 +50,7 @@ export function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-xl">
-      <Card title="Регистрация" subtitle="Создаёт пользователя. Авторизация дальше — через HTTP Basic (логин/пароль).">
+      <Card title="Регистрация" subtitle="Создаёт пользователя. Дальше можно войти через JWT (access token).">
         <div className="grid gap-3">
           <Input label="Username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
           <Input

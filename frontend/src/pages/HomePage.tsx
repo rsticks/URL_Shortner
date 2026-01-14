@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { createShortUrl } from '../api/endpoints'
 import { formatApiError } from '../api/http'
 import type { ResponseDto } from '../api/types'
@@ -31,7 +31,6 @@ function saveHistory(items: HistoryItem[]) {
 }
 
 export function HomePage() {
-  const creds = useMemo(() => loadCredentials(), [])
   const [url, setUrl] = useState('')
   const [result, setResult] = useState<ResponseDto | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +42,7 @@ export function HomePage() {
     setResult(null)
     setLoading(true)
     try {
+      const creds = loadCredentials()
       const data = await createShortUrl(url.trim(), creds)
       setResult(data)
       const next: HistoryItem[] = [
@@ -58,7 +58,8 @@ export function HomePage() {
     }
   }
 
-  async function copy(text: string) {
+  async function copy(text: string | undefined | null) {
+    if (!text) return
     try {
       await navigator.clipboard.writeText(text)
     } catch {
@@ -70,7 +71,7 @@ export function HomePage() {
     <div className="grid gap-6 lg:grid-cols-2">
       <Card
         title="Сокращение ссылки"
-        subtitle="Введите длинный URL — получите короткую ссылку. Если вы залогинены (Basic auth), связь сохранится за пользователем."
+        subtitle="Введите длинный URL — получите короткую ссылку. Если вы залогинены, связь сохранится за пользователем."
       >
         <div className="grid gap-3">
           <Input
@@ -122,7 +123,6 @@ export function HomePage() {
 
       <Card
         title="История (в этом браузере)"
-        subtitle="Хранится в localStorage (быстро и удобно). Для серверного списка используйте страницу «Мои ссылки»."
       >
         {history.length === 0 ? (
           <div className="text-sm text-slate-400">Пока пусто.</div>

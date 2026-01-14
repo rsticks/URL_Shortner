@@ -1,6 +1,8 @@
 import { NavLink } from 'react-router-dom'
+import { useAuthCredentials } from '../auth/useAuthCredentials'
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const creds = useAuthCredentials()
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/70 backdrop-blur">
@@ -15,7 +17,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex items-center gap-1">
             <TopLink to="/">Сократить</TopLink>
             <TopLink to="/my-urls">Мои ссылки</TopLink>
-            <TopLink to="/register">Регистрация</TopLink>
+            {!creds ? <TopLink to="/register">Регистрация</TopLink> : null}
             <TopLink to="/account">Аккаунт</TopLink>
           </nav>
         </div>
@@ -25,7 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <footer className="border-t border-white/10 py-6">
         <div className="mx-auto max-w-5xl px-4 text-xs text-slate-400">
-          API: <span className="font-mono">/api/v1</span> · Auth: <span className="font-mono">HTTP Basic</span>
+          API: <span className="font-mono">/api/v1</span> · Auth: <span className="font-mono">Bearer JWT</span>
         </div>
       </footer>
     </div>

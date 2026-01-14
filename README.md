@@ -35,3 +35,27 @@ Vite настроен так, что запросы на `/api/*` проксир
 ### Переменные окружения
 
 - `VITE_API_BASE`: базовый URL для API (по умолчанию пусто, используется относительный `/api/...`).
+
+## Docker: локально (Apple Silicon) и сервер (amd64)
+
+### Локально (M1/M2)
+
+Теперь `Dockerfile` multi-arch, поэтому на Apple Silicon можно просто:
+
+```bash
+docker compose up -d --build
+```
+
+### Сервер (amd64)
+
+На x86_64 сервере можно так же:
+
+```bash
+docker compose up -d --build
+```
+
+Если вы хотите **собрать amd64 образ на M1** и запушить в registry:
+
+```bash
+docker buildx build --platform linux/amd64 -t your-registry/url_shortener:tag --push .
+```
