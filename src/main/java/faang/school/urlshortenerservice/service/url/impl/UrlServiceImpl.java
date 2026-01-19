@@ -2,15 +2,20 @@ package faang.school.urlshortenerservice.service.url.impl;
 
 import faang.school.urlshortenerservice.dto.ResponseDto;
 import faang.school.urlshortenerservice.dto.UserLinkDto;
+import faang.school.urlshortenerservice.exception.AuthenticationRequiredException;
+import faang.school.urlshortenerservice.exception.SubscriptionRequiredException;
 import faang.school.urlshortenerservice.model.AppUser;
 import faang.school.urlshortenerservice.model.Url;
+import faang.school.urlshortenerservice.model.UrlUtm;
 import faang.school.urlshortenerservice.model.UserUrl;
 import faang.school.urlshortenerservice.repository.UserUrlRepository;
 import faang.school.urlshortenerservice.repository.UrlCacheRepository;
 import faang.school.urlshortenerservice.repository.UrlRepository;
+import faang.school.urlshortenerservice.repository.UrlUtmRepository;
 import faang.school.urlshortenerservice.service.hash.HashCache;
 import faang.school.urlshortenerservice.service.user.AppUserService;
 import faang.school.urlshortenerservice.service.url.UrlService;
+import faang.school.urlshortenerservice.service.url.UtmParser;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +41,7 @@ public class UrlServiceImpl implements UrlService {
     private final AppUserService appUserService;
     private final UserUrlRepository userUrlRepository;
     private final UrlRepository urlRepository;
+    private final UrlUtmRepository urlUtmRepository;
     @Value("${api-version}")
     private String apiVersion;
 
@@ -49,18 +55,47 @@ public class UrlServiceImpl implements UrlService {
 
     @Override
     @Transactional
-    public ResponseDto createShortUrl(String originalUrl, HttpServletRequest request) {
+    public ResponseDto createShortUrl(String originalUrl, boolean saveUtm, HttpServletRequest request) {
         log.info("Start creating short for url: {}", originalUrl);
 
         Url url = urlCacheRepository.save(new Url(hashCache.getHash(), originalUrl, LocalDateTime.now()));
-        try {
-            AppUser currentUser = appUserService.getCurrentUser();
+        if (saveUtm) {
+            // saving UTM is a paid feature: requires authentication + active subscription
+            AppUser currentUser;
+            try {
+                currentUser = appUserService.getCurrentUser();
+            } catch (EntityNotFoundException ex) {
+                throw new AuthenticationRequiredException("Authentication required to save UTM");
+            }
+            if (!appUserService.isSubscribed(currentUser)) {
+                throw new SubscriptionRequiredException("Subscription required to create short links with UTM");
+            }
             UserUrl userUrl = new UserUrl();
             userUrl.setUrlHash(url.getHash());
             userUrl.setUser(currentUser);
             userUrlRepository.save(userUrl);
-        } catch (EntityNotFoundException ex) {
-            // user not authenticated -> link remains anonymous
+
+            var utm = UtmParser.parseUtmParams(originalUrl);
+            if (!utm.isEmpty()) {
+                UrlUtm meta = new UrlUtm();
+                meta.setUrlHash(url.getHash());
+                meta.setUtmSource(utm.get("utm_source"));
+                meta.setUtmMedium(utm.get("utm_medium"));
+                meta.setUtmCampaign(utm.get("utm_campaign"));
+                meta.setUtmContent(utm.get("utm_content"));
+                meta.setUtmTerm(utm.get("utm_term"));
+                urlUtmRepository.save(meta);
+            }
+        } else {
+            try {
+                AppUser currentUser = appUserService.getCurrentUser();
+                UserUrl userUrl = new UserUrl();
+                userUrl.setUrlHash(url.getHash());
+                userUrl.setUser(currentUser);
+                userUrlRepository.save(userUrl);
+            } catch (EntityNotFoundException ex) {
+                // user not authenticated -> link remains anonymous
+            }
         }
         String shortUrl = buildUrl(url, request);
 
@@ -76,9 +111,14 @@ public class UrlServiceImpl implements UrlService {
             return List.of();
         }
 
-        List<String> hashes = links.stream().map(UserUrl::getUrlHash).collect(Collectors.toList());
+        List<String> hashes = links.stream()
+                .map(UserUrl::getUrlHash)
+                .filter(Objects::nonNull)
+                .toList();
         Map<String, Url> urlsByHash = new HashMap<>();
-        for (Url url : urlRepository.findAllById(hashes)) {
+        @SuppressWarnings("null")
+        Iterable<Url> urls = urlRepository.findAllById(hashes);
+        for (Url url : urls) {
             urlsByHash.put(url.getHash(), url);
         }
 

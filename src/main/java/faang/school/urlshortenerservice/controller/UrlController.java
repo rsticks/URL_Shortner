@@ -3,11 +3,13 @@ package faang.school.urlshortenerservice.controller;
 import faang.school.urlshortenerservice.dto.ResponseDto;
 import faang.school.urlshortenerservice.dto.UserLinkDto;
 import faang.school.urlshortenerservice.dto.UrlDto;
+import faang.school.urlshortenerservice.service.analytics.ClickAnalyticsService;
 import faang.school.urlshortenerservice.service.url.UrlService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -18,7 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
 import java.util.List;
 
 @Slf4j
@@ -28,10 +29,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UrlController {
     private final UrlService urlService;
+    private final ClickAnalyticsService clickAnalyticsService;
 
     @PostMapping("/url")
     public ResponseDto createShortUrl(@Valid @RequestBody UrlDto url, HttpServletRequest request) {
-        return urlService.createShortUrl(url.getUrl(), request);
+        return urlService.createShortUrl(url.getUrl(), url.isSaveUtm(), request);
     }
 
     @GetMapping("/url/me")
@@ -40,11 +42,11 @@ public class UrlController {
     }
 
     @GetMapping("/{hash}")
-    public ResponseEntity<Void> redirect(@PathVariable String hash) {
+    public ResponseEntity<Void> redirect(@PathVariable String hash, HttpServletRequest request) {
         String url = urlService.getUrlByHash(hash);
-        return ResponseEntity
-                .status(HttpStatus.FOUND)
-                .location(URI.create(url))
+        clickAnalyticsService.recordRedirect(hash, HttpStatus.FOUND.value(), request);
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .header(HttpHeaders.LOCATION, url)
                 .build();
     }
 }

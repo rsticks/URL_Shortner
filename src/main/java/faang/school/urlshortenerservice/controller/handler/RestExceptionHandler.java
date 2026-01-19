@@ -1,6 +1,7 @@
 package faang.school.urlshortenerservice.controller.handler;
 
 import faang.school.urlshortenerservice.dto.ErrorResponse;
+import faang.school.urlshortenerservice.exception.AuthenticationRequiredException;
 import faang.school.urlshortenerservice.exception.HashNotExistException;
 import faang.school.urlshortenerservice.exception.SubscriptionRequiredException;
 import faang.school.urlshortenerservice.exception.UserAlreadyExistsException;
@@ -52,6 +53,13 @@ public class RestExceptionHandler {
     public ErrorResponse handleValidationException(UserAlreadyExistsException ex) {
         log.error("UserAlreadyExistsException: {}", ex.getMessage());
         return buildErrorResponse(ErrorCode.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(AuthenticationRequiredException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponse handleValidationException(AuthenticationRequiredException ex) {
+        log.error("AuthenticationRequiredException: {}", ex.getMessage());
+        return buildErrorResponse(ErrorCode.UNAUTHORIZED, ex.getMessage());
     }
 
     @ExceptionHandler(SubscriptionRequiredException.class)

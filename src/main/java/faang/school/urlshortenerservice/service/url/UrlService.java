@@ -12,7 +12,7 @@ public interface UrlService {
 
     List<Url> getAndDeleteOldUrls(LocalDateTime olderThan);
 
-    ResponseDto createShortUrl(String originalUrl, HttpServletRequest request);
+    ResponseDto createShortUrl(String originalUrl, boolean saveUtm, HttpServletRequest request);
 
     List<UserLinkDto> getMyUrls(HttpServletRequest request);
 

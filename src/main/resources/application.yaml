@@ -38,6 +38,12 @@ jwt:
   cookie-secure: ${JWT_COOKIE_SECURE:false}
   cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
 
+analytics:
+  # For production override via env: ANALYTICS_VISITOR_HMAC_SECRET
+  visitor-hmac-secret: ${ANALYTICS_VISITOR_HMAC_SECRET:change-me-analytics-secret}
+  click-event-retention: ${ANALYTICS_CLICK_EVENT_RETENTION:30d}
+  clean-click-events-cron: ${ANALYTICS_CLEAN_CLICK_EVENTS_CRON:0 0 3 * * *}
+
 url-shortener-service:
   batch-size: ${BATCH_SIZE}
   max-hashes-in-store: ${MAX_BATCH_SIZE}
