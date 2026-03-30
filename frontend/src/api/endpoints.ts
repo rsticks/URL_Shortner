@@ -1,6 +1,6 @@
 import type { Credentials } from '../auth/credentials'
 import { http, withAuth } from './http'
-import type { LoginResponse, PurchaseResult, RegisterResult, ResponseDto, SubscriptionPlan, UserLinkDto } from './types'
+import type { LoginResponse, PurchaseResult, RegisterResult, ResponseDto, SubscriptionPlan, UrlStatsResponse, UserLinkDto } from './types'
 
 export async function createShortUrl(url: string, creds?: Credentials | null): Promise<ResponseDto> {
   // Backend may return either JSON: { shortUrl: "..." } or plain text: "http://...".
@@ -24,8 +24,8 @@ export async function register(username: string, email: string, password: string
   return res.data
 }
 
-export async function login(username: string, password: string): Promise<LoginResponse> {
-  const res = await http.post<LoginResponse>('/api/v1/auth/login', { username, password })
+export async function login(username: string, password: string, rememberMe = false): Promise<LoginResponse> {
+  const res = await http.post<LoginResponse>('/api/v1/auth/login', { username, password, rememberMe })
   return res.data
 }
 
@@ -50,6 +50,20 @@ export async function purchaseSubscription(plan: SubscriptionPlan, creds: Creden
 
 export async function myUrls(creds: Credentials): Promise<UserLinkDto[]> {
   const res = await http.get<UserLinkDto[]>('/api/v1/url/me', withAuth(creds))
+  return res.data
+}
+
+export async function urlStats(
+  hash: string,
+  from: string,
+  to: string,
+  top: number,
+  creds: Credentials,
+): Promise<UrlStatsResponse> {
+  const res = await http.get<UrlStatsResponse>(`/api/v1/url/${encodeURIComponent(hash)}/stats`, {
+    ...withAuth(creds),
+    params: { from, to, top },
+  })
   return res.data
 }
 

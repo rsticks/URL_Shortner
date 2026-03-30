@@ -7,7 +7,7 @@ import { saveCredentials } from '../auth/credentials'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-import { isLatinAuth } from '../utils/validation'
+import { AUTH_PASSWORD_MAX_LENGTH, getAuthPasswordError, isLatinAuth } from '../utils/validation'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -37,8 +37,9 @@ export function RegisterPage() {
       setError('Email: некорректный формат')
       return
     }
-    if (!isLatinAuth(password)) {
-      setError('Пароль: только латиница, цифры, ".", "_" или "-"')
+    const passwordError = getAuthPasswordError(password)
+    if (passwordError) {
+      setError(passwordError)
       return
     }
     if (password !== password2) {
@@ -50,7 +51,7 @@ export function RegisterPage() {
       const data = await register(u, e, password)
       setResult(data)
       // удобство: сразу залогиниться и сохранить JWT
-      const auth = await login(u, password)
+      const auth = await login(u, password, false)
       saveCredentials({ username: auth.username, token: auth.accessToken })
     } catch (e) {
       setError(formatApiError(e))
@@ -77,6 +78,7 @@ export function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
+            maxLength={AUTH_PASSWORD_MAX_LENGTH}
           />
           <Input
             label="Повторите пароль"
@@ -84,6 +86,7 @@ export function RegisterPage() {
             value={password2}
             onChange={(e) => setPassword2(e.target.value)}
             autoComplete="new-password"
+            maxLength={AUTH_PASSWORD_MAX_LENGTH}
           />
           <div className="flex flex-wrap items-center gap-2">
             <Button

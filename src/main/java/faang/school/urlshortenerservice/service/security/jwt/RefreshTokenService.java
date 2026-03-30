@@ -11,11 +11,13 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("NullAway")
 public class RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtProperties jwtProperties;
@@ -31,12 +33,12 @@ public class RefreshTokenService {
     }
 
     public Optional<RefreshToken> findActive(UUID id) {
-        return refreshTokenRepository.findByIdAndRevokedFalse(id)
+        return refreshTokenRepository.findByIdAndRevokedFalse(Objects.requireNonNull(id, "id"))
                 .filter(t -> t.getExpiresAt().isAfter(OffsetDateTime.now()));
     }
 
     public void revoke(UUID id) {
-        refreshTokenRepository.findById(id).ifPresent(t -> {
+        refreshTokenRepository.findById(Objects.requireNonNull(id, "id")).ifPresent(t -> {
             t.setRevoked(true);
             refreshTokenRepository.save(t);
         });
@@ -48,23 +50,43 @@ public class RefreshTokenService {
     }
 
     public void addRefreshCookie(HttpHeaders headers, String refreshJwt) {
-        ResponseCookie cookie = ResponseCookie.from(jwtProperties.refreshCookieName(), refreshJwt)
+        String name = Objects.requireNonNull(jwtProperties.refreshCookieName(), "refreshCookieName");
+        String sameSite = Objects.requireNonNull(jwtProperties.cookieSameSite(), "cookieSameSite");
+        ResponseCookie cookie = ResponseCookie.from(name, Objects.requireNonNull(refreshJwt, "refreshJwt"))
                 .httpOnly(true)
                 .secure(jwtProperties.cookieSecure())
-                .sameSite(jwtProperties.cookieSameSite())
+                .sameSite(sameSite)
                 .path("/api/v1/auth")
-                .maxAge(Duration.ofSeconds(jwtProperties.refreshTtlSeconds()))
                 .build();
         headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    public void clearRefreshCookie(HttpHeaders headers) {
-        ResponseCookie cookie = ResponseCookie.from(jwtProperties.refreshCookieName(), "")
+    public void addRefreshCookie(HttpHeaders headers, String refreshJwt, boolean rememberMe) {
+        String name = Objects.requireNonNull(jwtProperties.refreshCookieName(), "refreshCookieName");
+        String sameSite = Objects.requireNonNull(jwtProperties.cookieSameSite(), "cookieSameSite");
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, Objects.requireNonNull(refreshJwt, "refreshJwt"))
                 .httpOnly(true)
                 .secure(jwtProperties.cookieSecure())
-                .sameSite(jwtProperties.cookieSameSite())
+                .sameSite(sameSite)
+                .path("/api/v1/auth");
+
+        // If rememberMe=false -> session cookie (no Max-Age), user will be logged out after closing the browser.
+        if (rememberMe) {
+            builder = builder.maxAge(Objects.requireNonNull(Duration.ofSeconds(jwtProperties.refreshTtlSeconds()), "maxAge"));
+        }
+
+        headers.add(HttpHeaders.SET_COOKIE, builder.build().toString());
+    }
+
+    public void clearRefreshCookie(HttpHeaders headers) {
+        String name = Objects.requireNonNull(jwtProperties.refreshCookieName(), "refreshCookieName");
+        String sameSite = Objects.requireNonNull(jwtProperties.cookieSameSite(), "cookieSameSite");
+        ResponseCookie cookie = ResponseCookie.from(name, "")
+                .httpOnly(true)
+                .secure(jwtProperties.cookieSecure())
+                .sameSite(sameSite)
                 .path("/api/v1/auth")
-                .maxAge(Duration.ZERO)
+                .maxAge(Objects.requireNonNull(Duration.ZERO, "maxAge"))
                 .build();
         headers.add(HttpHeaders.SET_COOKIE, cookie.toString());
     }

@@ -15,7 +15,7 @@ public record RegisterRequest(
         @Size(max = 255)
         String email,
         @NotBlank
-        @Size(min = 6, max = 128)
+        @Size(min = 6, max = 72, message = "Пароль: от 6 до 72 символов")
         @Pattern(regexp = "^[A-Za-z0-9._-]+$", message = "Пароль: только латиница, цифры, '.', '_' или '-'")
         String password
 ) {

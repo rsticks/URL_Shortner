@@ -31,6 +31,48 @@ export type UserLinkDto = {
   createdAt: string | number | number[]
 }
 
+export type DailyStatDto = {
+  day: string // ISO date: YYYY-MM-DD
+  clicks: number
+  uniqueVisitors: number
+}
+
+export type DimStatDto = {
+  value: string
+  clicks: number
+}
+
+export type UrlStatsResponse = {
+  urlHash: string
+  from: string // ISO date
+  to: string // ISO date
+  daily: DailyStatDto[]
+  topReferrers: DimStatDto[]
+  referrerCategories: DimStatDto[]
+  topLanguages: DimStatDto[]
+  deviceTypes: DimStatDto[]
+  osFamilies: DimStatDto[]
+  osVersions: DimStatDto[]
+  browserFamilies: DimStatDto[]
+  browserVersions: DimStatDto[]
+  countries: DimStatDto[]
+  regions: DimStatDto[]
+  cities: DimStatDto[]
+  timezones: DimStatDto[]
+  asns: DimStatDto[]
+  providers: DimStatDto[]
+  networkTypes: DimStatDto[]
+  proxyStatuses: DimStatDto[]
+  vpnStatuses: DimStatDto[]
+  torStatuses: DimStatDto[]
+  hoursOfDay: DimStatDto[]
+  daysOfWeek: DimStatDto[]
+  clientHintPlatforms: DimStatDto[]
+  clientHintPlatformVersions: DimStatDto[]
+  clientHintMobiles: DimStatDto[]
+  clientHintModels: DimStatDto[]
+}
+
 export type LoginResponse = {
   tokenType: string
   accessToken: string

@@ -20,6 +20,8 @@ import java.time.OffsetDateTime;
 @Service
 @RequiredArgsConstructor
 public class AppUserServiceImpl implements AppUserService {
+    private static final int MAX_BCRYPT_PASSWORD_LENGTH = 72;
+
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -30,6 +32,9 @@ public class AppUserServiceImpl implements AppUserService {
         }
         if (appUserRepository.existsByEmail(email)) {
             throw new UserAlreadyExistsException("Email already exists: " + email);
+        }
+        if (rawPassword.length() > MAX_BCRYPT_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("Пароль: от 6 до 72 символов");
         }
         AppUser user = new AppUser();
         user.setUsername(username);

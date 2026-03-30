@@ -44,6 +44,63 @@ public class ClickEvent {
     @Column(name = "browser_family")
     private String browserFamily;
 
+    @Column(name = "browser_version")
+    private String browserVersion;
+
+    @Column(name = "os_version")
+    private String osVersion;
+
+    @Column(name = "country")
+    private String country;
+
+    @Column(name = "region_name")
+    private String region;
+
+    @Column(name = "city")
+    private String city;
+
+    @Column(name = "time_zone")
+    private String timezone;
+
+    @Column(name = "asn")
+    private String asn;
+
+    @Column(name = "provider")
+    private String provider;
+
+    @Column(name = "network_type")
+    private String networkType;
+
+    @Column(name = "proxy_status")
+    private String proxyStatus;
+
+    @Column(name = "vpn_status")
+    private String vpnStatus;
+
+    @Column(name = "tor_status")
+    private String torStatus;
+
+    @Column(name = "referrer_category")
+    private String referrerCategory;
+
+    @Column(name = "client_hint_platform")
+    private String clientHintPlatform;
+
+    @Column(name = "client_hint_platform_version")
+    private String clientHintPlatformVersion;
+
+    @Column(name = "client_hint_mobile")
+    private String clientHintMobile;
+
+    @Column(name = "client_hint_model")
+    private String clientHintModel;
+
+    @Column(name = "hour_of_day")
+    private Integer hourOfDay;
+
+    @Column(name = "day_of_week")
+    private String dayOfWeek;
+
     @Column(name = "is_bot", nullable = false)
     private boolean bot;
 

@@ -33,7 +33,7 @@ public class UrlController {
 
     @PostMapping("/url")
     public ResponseDto createShortUrl(@Valid @RequestBody UrlDto url, HttpServletRequest request) {
-        return urlService.createShortUrl(url.getUrl(), url.isSaveUtm(), request);
+        return urlService.createShortUrl(url.getUrl(), request);
     }
 
     @GetMapping("/url/me")

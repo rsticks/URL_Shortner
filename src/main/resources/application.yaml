@@ -32,7 +32,7 @@ jwt:
   # For production override via env: JWT_SECRET
   secret: ${JWT_SECRET:change-me-change-me-change-me-change-me-change-me}
   ttl-seconds: ${JWT_TTL_SECONDS:3600}
-  refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:2592000} # 30 days
+  refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:604800} # 7 days
   refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
   # For local http dev keep false; for prod https set true
   cookie-secure: ${JWT_COOKIE_SECURE:false}
@@ -43,6 +43,10 @@ analytics:
   visitor-hmac-secret: ${ANALYTICS_VISITOR_HMAC_SECRET:change-me-analytics-secret}
   click-event-retention: ${ANALYTICS_CLICK_EVENT_RETENTION:30d}
   clean-click-events-cron: ${ANALYTICS_CLEAN_CLICK_EVENTS_CRON:0 0 3 * * *}
+  geo-ip:
+    city-db-path: ${ANALYTICS_GEOIP_CITY_DB_PATH:}
+    asn-db-path: ${ANALYTICS_GEOIP_ASN_DB_PATH:}
+    anonymous-db-path: ${ANALYTICS_GEOIP_ANONYMOUS_DB_PATH:}
 
 url-shortener-service:
   batch-size: ${BATCH_SIZE}

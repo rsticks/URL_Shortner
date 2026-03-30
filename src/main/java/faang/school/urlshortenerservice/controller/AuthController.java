@@ -61,10 +61,10 @@ public class AuthController {
         var user = appUserRepository.findByUsername(principal.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "User not found"));
         var refreshRecord = refreshTokenService.create(user);
-        String refreshJwt = jwtService.generateRefreshToken(user.getUsername(), refreshRecord.getId());
+        String refreshJwt = jwtService.generateRefreshToken(user.getUsername(), refreshRecord.getId(), request.rememberMe());
 
         HttpHeaders headers = new HttpHeaders();
-        refreshTokenService.addRefreshCookie(headers, refreshJwt);
+        refreshTokenService.addRefreshCookie(headers, refreshJwt, request.rememberMe());
         return ResponseEntity.ok().headers(headers)
                 .body(new LoginResponse("Bearer", access, exp.getEpochSecond(), user.getUsername()));
     }
@@ -94,7 +94,8 @@ public class AuthController {
         // rotate
         refreshTokenService.revoke(existing);
         var newRecord = refreshTokenService.create(existing.getUser());
-        String newRefreshJwt = jwtService.generateRefreshToken(existing.getUser().getUsername(), newRecord.getId());
+        boolean rememberMe = jwtService.extractRememberMe(refreshJwt);
+        String newRefreshJwt = jwtService.generateRefreshToken(existing.getUser().getUsername(), newRecord.getId(), rememberMe);
 
         // issue new access
         UserDetails userDetails = appUserDetailsService.loadUserByUsername(username);
@@ -102,7 +103,7 @@ public class AuthController {
         Instant exp = jwtService.getAccessExpirationFromNow();
 
         HttpHeaders headers = new HttpHeaders();
-        refreshTokenService.addRefreshCookie(headers, newRefreshJwt);
+        refreshTokenService.addRefreshCookie(headers, newRefreshJwt, rememberMe);
         return ResponseEntity.ok().headers(headers)
                 .body(new LoginResponse("Bearer", access, exp.getEpochSecond(), username));
     }

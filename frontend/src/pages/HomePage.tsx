@@ -2,55 +2,28 @@ import { useState } from 'react'
 import { createShortUrl } from '../api/endpoints'
 import { formatApiError } from '../api/http'
 import type { ResponseDto } from '../api/types'
-import { loadCredentials } from '../auth/credentials'
+import { useAuthCredentials } from '../auth/useAuthCredentials'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
-
-type HistoryItem = {
-  originalUrl: string
-  shortUrl: string
-  createdAt: string
-}
-
-const HISTORY_KEY = 'url-shortener.history'
-const HISTORY_LIMIT = 12
-
-function loadHistory(): HistoryItem[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY)
-    if (!raw) return []
-    return JSON.parse(raw) as HistoryItem[]
-  } catch {
-    return []
-  }
-}
-
-function saveHistory(items: HistoryItem[]) {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, HISTORY_LIMIT)))
-}
+import { addToShortenHistory, clearShortenHistory, useShortenHistory } from '../state/shortenHistoryStore'
 
 export function HomePage() {
   const [url, setUrl] = useState('')
   const [result, setResult] = useState<ResponseDto | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [history, setHistory] = useState<HistoryItem[]>(() => loadHistory())
+  const history = useShortenHistory()
+  const creds = useAuthCredentials()
 
   async function onShorten() {
     setError(null)
     setResult(null)
     setLoading(true)
     try {
-      const creds = loadCredentials()
       const data = await createShortUrl(url.trim(), creds)
       setResult(data)
-      const next: HistoryItem[] = [
-        { originalUrl: url.trim(), shortUrl: data.shortUrl, createdAt: new Date().toISOString() },
-        ...history,
-      ].slice(0, HISTORY_LIMIT)
-      setHistory(next)
-      saveHistory(next)
+      addToShortenHistory({ originalUrl: url.trim(), shortUrl: data.shortUrl, createdAt: new Date().toISOString() })
     } catch (e) {
       setError(formatApiError(e))
     } finally {
@@ -122,7 +95,7 @@ export function HomePage() {
       </Card>
 
       <Card
-        title="История (в этом браузере)"
+        title="История (в этой сессии)"
       >
         {history.length === 0 ? (
           <div className="text-sm text-slate-400">Пока пусто.</div>
@@ -146,8 +119,7 @@ export function HomePage() {
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setHistory([])
-                  saveHistory([])
+                  clearShortenHistory()
                 }}
               >
                 Очистить историю

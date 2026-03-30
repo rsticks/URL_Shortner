@@ -8,12 +8,13 @@ import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { formatBackendDate } from '../utils/dates'
-import { isLatinAuth } from '../utils/validation'
+import { AUTH_PASSWORD_MAX_LENGTH, getAuthPasswordError, isLatinAuth } from '../utils/validation'
 
 export function AccountPage() {
   const creds = useAuthCredentials()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [me, setMe] = useState<PurchaseResult | null>(null)
   const [plan, setPlan] = useState<SubscriptionPlan>('MONTHLY')
   const [error, setError] = useState<string | null>(null)
@@ -44,15 +45,21 @@ export function AccountPage() {
 
   async function onLogin() {
     const u = username.trim()
-    if (!isLatinAuth(u) || !isLatinAuth(password)) {
-      setError('Логин и пароль должны содержать только латиницу, цифры, ".", "_" или "-"')
+    if (!isLatinAuth(u)) {
+      setError('Логин: только латиница, цифры, ".", "_" или "-"')
+      setMe(null)
+      return
+    }
+    const passwordError = getAuthPasswordError(password)
+    if (passwordError) {
+      setError(passwordError)
       setMe(null)
       return
     }
     setError(null)
     setLoading(true)
     try {
-      const res = await login(u, password)
+      const res = await login(u, password, rememberMe)
       const next = { username: res.username, token: res.accessToken }
       saveCredentials(next)
       setPassword('')
@@ -104,7 +111,17 @@ export function AccountPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
+              maxLength={AUTH_PASSWORD_MAX_LENGTH}
             />
+            <label className="flex select-none items-center gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border border-white/20 bg-white/5 text-indigo-500 focus:ring-2 focus:ring-indigo-400/20"
+              />
+              Запомнить меня (7 дней)
+            </label>
             <div className="flex flex-wrap items-center gap-2">
               <Button onClick={onLogin} disabled={loading || username.trim().length === 0 || password.length === 0}>
                 {loading ? 'Проверяем…' : 'Войти'}

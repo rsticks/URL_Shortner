@@ -12,4 +12,4 @@ databaseChangeLog:
   - include:
       file: db/changelog/changeset/analytics_V005__create_click_stats.sql
   - include:
-      file: db/changelog/changeset/url_utm_V006__create_url_utm.sql
+      file: db/changelog/changeset/analytics_V006__expand_click_stats.sql

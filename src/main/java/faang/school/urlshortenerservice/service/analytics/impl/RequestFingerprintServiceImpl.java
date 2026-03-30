@@ -1,8 +1,12 @@
 package faang.school.urlshortenerservice.service.analytics.impl;
 
 import faang.school.urlshortenerservice.properties.AnalyticsProperties;
+import faang.school.urlshortenerservice.service.analytics.IpMetadata;
+import faang.school.urlshortenerservice.service.analytics.IpMetadataResolver;
 import faang.school.urlshortenerservice.service.analytics.RequestFingerprint;
 import faang.school.urlshortenerservice.service.analytics.RequestFingerprintService;
+import faang.school.urlshortenerservice.service.analytics.UserAgentMetadata;
+import faang.school.urlshortenerservice.service.analytics.UserAgentMetadataResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,20 +24,20 @@ public class RequestFingerprintServiceImpl implements RequestFingerprintService 
     private static final String HMAC_SHA_256 = "HmacSHA256";
 
     private final AnalyticsProperties properties;
+    private final IpMetadataResolver ipMetadataResolver;
+    private final UserAgentMetadataResolver userAgentMetadataResolver;
 
     @Override
     public RequestFingerprint fingerprint(LocalDate dayUtc, HttpServletRequest request) {
         String userAgent = header(request, "User-Agent");
         String ip = clientIp(request);
+        IpMetadata ipMetadata = ipMetadataResolver.resolve(ip);
+        UserAgentMetadata uaMetadata = userAgentMetadataResolver.resolve(request);
 
         boolean bot = isBot(userAgent);
-        String deviceType = bot ? "bot" : deviceType(userAgent);
-
         String referrerHost = referrerHost(request);
+        String referrerCategory = referrerCategory(referrerHost, request.getServerName());
         String language = language(request);
-
-        String osFamily = osFamily(userAgent);
-        String browserFamily = browserFamily(userAgent);
 
         String visitorHashDay = hmacHex(properties.getVisitorHmacSecret(),
                 dayUtc + "|" + normalizeIp(ip) + "|" + normalizeUserAgent(userAgent));
@@ -41,10 +45,27 @@ public class RequestFingerprintServiceImpl implements RequestFingerprintService 
         return RequestFingerprint.builder()
                 .visitorHashDay(visitorHashDay)
                 .referrerHost(referrerHost)
+                .referrerCategory(referrerCategory)
                 .language(language)
-                .deviceType(deviceType)
-                .osFamily(osFamily)
-                .browserFamily(browserFamily)
+                .deviceType(bot ? "bot" : uaMetadata.deviceType())
+                .osFamily(uaMetadata.osFamily())
+                .osVersion(uaMetadata.osVersion())
+                .browserFamily(uaMetadata.browserFamily())
+                .browserVersion(uaMetadata.browserVersion())
+                .country(ipMetadata.country())
+                .region(ipMetadata.region())
+                .city(ipMetadata.city())
+                .timezone(ipMetadata.timezone())
+                .asn(ipMetadata.asn())
+                .provider(ipMetadata.provider())
+                .networkType(ipMetadata.networkType())
+                .proxyStatus(ipMetadata.proxyStatus())
+                .vpnStatus(ipMetadata.vpnStatus())
+                .torStatus(ipMetadata.torStatus())
+                .clientHintPlatform(uaMetadata.clientHintPlatform())
+                .clientHintPlatformVersion(uaMetadata.clientHintPlatformVersion())
+                .clientHintMobile(uaMetadata.clientHintMobile())
+                .clientHintModel(uaMetadata.clientHintModel())
                 .bot(bot)
                 .build();
     }
@@ -68,6 +89,24 @@ public class RequestFingerprintServiceImpl implements RequestFingerprintService 
         }
     }
 
+    private String referrerCategory(String referrerHost, String serverName) {
+        if (referrerHost == null || referrerHost.isBlank() || "direct".equals(referrerHost)) {
+            return "direct";
+        }
+        String normalizedHost = referrerHost.toLowerCase(Locale.ROOT);
+        String normalizedServer = normalizeHost(serverName);
+        if (normalizedServer != null && (normalizedHost.equals(normalizedServer) || normalizedHost.endsWith("." + normalizedServer))) {
+            return "internal";
+        }
+        if (matchesAny(normalizedHost, properties.getReferrer().getSearchHosts())) {
+            return "search";
+        }
+        if (matchesAny(normalizedHost, properties.getReferrer().getSocialHosts())) {
+            return "social";
+        }
+        return "external";
+    }
+
     private static String language(HttpServletRequest request) {
         String al = header(request, "Accept-Language");
         if (al == null) {
@@ -86,36 +125,6 @@ public class RequestFingerprintServiceImpl implements RequestFingerprintService 
         if (ua == null) return false;
         String s = ua.toLowerCase(Locale.ROOT);
         return s.contains("bot") || s.contains("spider") || s.contains("crawler") || s.contains("slurp");
-    }
-
-    private static String deviceType(String ua) {
-        if (ua == null) return "unknown";
-        String s = ua.toLowerCase(Locale.ROOT);
-        if (s.contains("ipad") || s.contains("tablet")) return "tablet";
-        if (s.contains("mobi") || s.contains("android") || s.contains("iphone")) return "mobile";
-        return "desktop";
-    }
-
-    private static String osFamily(String ua) {
-        if (ua == null) return "unknown";
-        String s = ua.toLowerCase(Locale.ROOT);
-        if (s.contains("windows")) return "Windows";
-        if (s.contains("android")) return "Android";
-        if (s.contains("iphone") || s.contains("ipad") || s.contains("ios")) return "iOS";
-        if (s.contains("mac os x") || s.contains("macintosh")) return "macOS";
-        if (s.contains("linux")) return "Linux";
-        return "Other";
-    }
-
-    private static String browserFamily(String ua) {
-        if (ua == null) return "unknown";
-        String s = ua.toLowerCase(Locale.ROOT);
-        if (s.contains("edg/") || s.contains("edge/")) return "Edge";
-        if (s.contains("opr/") || s.contains("opera")) return "Opera";
-        if (s.contains("firefox/")) return "Firefox";
-        if (s.contains("chrome/") && !s.contains("edg/") && !s.contains("opr/")) return "Chrome";
-        if (s.contains("safari/") && !s.contains("chrome/") && !s.contains("chromium")) return "Safari";
-        return "Other";
     }
 
     private static String clientIp(HttpServletRequest request) {
@@ -138,6 +147,26 @@ public class RequestFingerprintServiceImpl implements RequestFingerprintService 
         if (ua == null) return "";
         String v = ua.trim();
         return v.length() > 512 ? v.substring(0, 512) : v;
+    }
+
+    private static String normalizeHost(String host) {
+        if (host == null || host.isBlank()) {
+            return null;
+        }
+        return host.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static boolean matchesAny(String host, Iterable<String> candidates) {
+        for (String candidate : candidates) {
+            if (candidate == null || candidate.isBlank()) {
+                continue;
+            }
+            String normalized = candidate.toLowerCase(Locale.ROOT);
+            if (host.equals(normalized) || host.endsWith(normalized) || host.contains(normalized)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String hmacHex(String secret, String payload) {

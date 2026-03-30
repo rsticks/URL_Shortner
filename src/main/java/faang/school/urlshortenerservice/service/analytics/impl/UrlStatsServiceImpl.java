@@ -2,16 +2,14 @@ package faang.school.urlshortenerservice.service.analytics.impl;
 
 import faang.school.urlshortenerservice.dto.analytics.DailyStatDto;
 import faang.school.urlshortenerservice.dto.analytics.DimStatDto;
-import faang.school.urlshortenerservice.dto.analytics.UrlUtmDto;
 import faang.school.urlshortenerservice.dto.analytics.UrlStatsResponse;
 import faang.school.urlshortenerservice.model.AppUser;
 import faang.school.urlshortenerservice.model.UserUrl;
-import faang.school.urlshortenerservice.model.UrlUtm;
 import faang.school.urlshortenerservice.repository.UserUrlRepository;
-import faang.school.urlshortenerservice.repository.UrlUtmRepository;
 import faang.school.urlshortenerservice.repository.analytics.DailyLinkStatsDimRepository;
 import faang.school.urlshortenerservice.repository.analytics.DailyLinkStatsRepository;
 import faang.school.urlshortenerservice.repository.analytics.DimStatView;
+import faang.school.urlshortenerservice.service.analytics.AnalyticsDimensions;
 import faang.school.urlshortenerservice.service.analytics.UrlStatsService;
 import faang.school.urlshortenerservice.service.user.AppUserService;
 import jakarta.persistence.EntityNotFoundException;
@@ -27,15 +25,8 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class UrlStatsServiceImpl implements UrlStatsService {
-    private static final String DIM_REFERRER = "referrer_host";
-    private static final String DIM_LANGUAGE = "language";
-    private static final String DIM_DEVICE = "device_type";
-    private static final String DIM_OS = "os_family";
-    private static final String DIM_BROWSER = "browser_family";
-
     private final AppUserService appUserService;
     private final UserUrlRepository userUrlRepository;
-    private final UrlUtmRepository urlUtmRepository;
     private final DailyLinkStatsRepository dailyLinkStatsRepository;
     private final DailyLinkStatsDimRepository dailyLinkStatsDimRepository;
 
@@ -55,17 +46,60 @@ public class UrlStatsServiceImpl implements UrlStatsService {
                 .map(s -> new DailyStatDto(s.getId().getDay(), s.getClicks(), s.getUniqueVisitors()))
                 .toList();
 
-        List<DimStatDto> topReferrers = map(dailyLinkStatsDimRepository.findTop(urlHash, from, to, DIM_REFERRER, limit));
-        List<DimStatDto> topLanguages = map(dailyLinkStatsDimRepository.findTop(urlHash, from, to, DIM_LANGUAGE, limit));
-        List<DimStatDto> deviceTypes = map(dailyLinkStatsDimRepository.findTop(urlHash, from, to, DIM_DEVICE, limit));
-        List<DimStatDto> osFamilies = map(dailyLinkStatsDimRepository.findTop(urlHash, from, to, DIM_OS, limit));
-        List<DimStatDto> browserFamilies = map(dailyLinkStatsDimRepository.findTop(urlHash, from, to, DIM_BROWSER, limit));
-
-        UrlUtmDto utm = urlUtmRepository.findById(Objects.requireNonNull(urlHash, "urlHash"))
-                .map(UrlStatsServiceImpl::toDto)
-                .orElse(null);
-
-        return new UrlStatsResponse(urlHash, from, to, utm, daily, topReferrers, topLanguages, deviceTypes, osFamilies, browserFamilies);
+        List<DimStatDto> topReferrers = top(urlHash, from, to, AnalyticsDimensions.REFERRER, limit);
+        List<DimStatDto> referrerCategories = top(urlHash, from, to, AnalyticsDimensions.REFERRER_CATEGORY, limit);
+        List<DimStatDto> topLanguages = top(urlHash, from, to, AnalyticsDimensions.LANGUAGE, limit);
+        List<DimStatDto> deviceTypes = top(urlHash, from, to, AnalyticsDimensions.DEVICE, limit);
+        List<DimStatDto> osFamilies = top(urlHash, from, to, AnalyticsDimensions.OS, limit);
+        List<DimStatDto> osVersions = top(urlHash, from, to, AnalyticsDimensions.OS_VERSION, limit);
+        List<DimStatDto> browserFamilies = top(urlHash, from, to, AnalyticsDimensions.BROWSER, limit);
+        List<DimStatDto> browserVersions = top(urlHash, from, to, AnalyticsDimensions.BROWSER_VERSION, limit);
+        List<DimStatDto> countries = top(urlHash, from, to, AnalyticsDimensions.COUNTRY, limit);
+        List<DimStatDto> regions = top(urlHash, from, to, AnalyticsDimensions.REGION, limit);
+        List<DimStatDto> cities = top(urlHash, from, to, AnalyticsDimensions.CITY, limit);
+        List<DimStatDto> timezones = top(urlHash, from, to, AnalyticsDimensions.TIMEZONE, limit);
+        List<DimStatDto> asns = top(urlHash, from, to, AnalyticsDimensions.ASN, limit);
+        List<DimStatDto> providers = top(urlHash, from, to, AnalyticsDimensions.PROVIDER, limit);
+        List<DimStatDto> networkTypes = top(urlHash, from, to, AnalyticsDimensions.NETWORK_TYPE, limit);
+        List<DimStatDto> proxyStatuses = top(urlHash, from, to, AnalyticsDimensions.PROXY_STATUS, limit);
+        List<DimStatDto> vpnStatuses = top(urlHash, from, to, AnalyticsDimensions.VPN_STATUS, limit);
+        List<DimStatDto> torStatuses = top(urlHash, from, to, AnalyticsDimensions.TOR_STATUS, limit);
+        List<DimStatDto> hoursOfDay = top(urlHash, from, to, AnalyticsDimensions.HOUR_OF_DAY, limit);
+        List<DimStatDto> daysOfWeek = top(urlHash, from, to, AnalyticsDimensions.DAY_OF_WEEK, limit);
+        List<DimStatDto> clientHintPlatforms = top(urlHash, from, to, AnalyticsDimensions.CLIENT_HINT_PLATFORM, limit);
+        List<DimStatDto> clientHintPlatformVersions = top(urlHash, from, to, AnalyticsDimensions.CLIENT_HINT_PLATFORM_VERSION, limit);
+        List<DimStatDto> clientHintMobiles = top(urlHash, from, to, AnalyticsDimensions.CLIENT_HINT_MOBILE, limit);
+        List<DimStatDto> clientHintModels = top(urlHash, from, to, AnalyticsDimensions.CLIENT_HINT_MODEL, limit);
+        return new UrlStatsResponse(
+                urlHash,
+                from,
+                to,
+                daily,
+                topReferrers,
+                referrerCategories,
+                topLanguages,
+                deviceTypes,
+                osFamilies,
+                osVersions,
+                browserFamilies,
+                browserVersions,
+                countries,
+                regions,
+                cities,
+                timezones,
+                asns,
+                providers,
+                networkTypes,
+                proxyStatuses,
+                vpnStatuses,
+                torStatuses,
+                hoursOfDay,
+                daysOfWeek,
+                clientHintPlatforms,
+                clientHintPlatformVersions,
+                clientHintMobiles,
+                clientHintModels
+        );
     }
 
     private void ensureOwner(String urlHash) {
@@ -82,8 +116,8 @@ public class UrlStatsServiceImpl implements UrlStatsService {
         return views.stream().map(v -> new DimStatDto(v.getValue(), v.getClicks())).toList();
     }
 
-    private static UrlUtmDto toDto(UrlUtm m) {
-        return new UrlUtmDto(m.getUtmSource(), m.getUtmMedium(), m.getUtmCampaign(), m.getUtmContent(), m.getUtmTerm());
+    private List<DimStatDto> top(String urlHash, LocalDate from, LocalDate to, String type, int limit) {
+        return map(dailyLinkStatsDimRepository.findTop(urlHash, from, to, type, limit));
     }
 }
 

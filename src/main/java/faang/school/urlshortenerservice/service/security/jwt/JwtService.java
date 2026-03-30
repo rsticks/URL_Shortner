@@ -47,7 +47,20 @@ public class JwtService {
                 .setId(tokenId.toString())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(exp))
-                .addClaims(Map.of("typ", "refresh"))
+                .addClaims(Map.of("typ", "refresh", "rm", false))
+                .signWith(getKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String generateRefreshToken(String username, UUID tokenId, boolean rememberMe) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(jwtProperties.refreshTtlSeconds());
+        return Jwts.builder()
+                .setSubject(username)
+                .setId(tokenId.toString())
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(exp))
+                .addClaims(Map.of("typ", "refresh", "rm", rememberMe))
                 .signWith(getKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -71,6 +84,13 @@ public class JwtService {
             throw new IllegalArgumentException("Refresh token id missing");
         }
         return UUID.fromString(id);
+    }
+
+    public boolean extractRememberMe(String token) {
+        Object rm = parse(token).getBody().get("rm");
+        if (rm == null) return false;
+        if (rm instanceof Boolean b) return b;
+        return Boolean.parseBoolean(String.valueOf(rm));
     }
 
     public boolean isAccessTokenValid(String token, UserDetails user) {
